@@ -59,12 +59,11 @@ const money = {
       run: (v, req, attrs = {}) => {
         const v1 = typeof v === "string" ? +v : v;
         if (typeof v1 === "number") {
-          const locale_ = attrs.locale || locale(req) || "en";
+          const locale_ = attrs.locale || attrs.format_locale || locale(req) || "en"; // Support new attribute
           return v1.toLocaleString(locale_, {
             style: attrs.currency ? "currency" : "decimal",
             currency: attrs.currency || undefined,
             currencyDisplay: attrs.currencyDisplay || "symbol",
-
             maximumFractionDigits: attrs.decimal_points,
           });
         } else return "";
@@ -75,23 +74,39 @@ const money = {
       run: (nm, v, attrs, cls, required, field) => {
         const id = `input${text_attr(nm)}`;
         const name = text_attr(nm);
+        const locale = field.attributes.locale || locale(req) || 'en';
+        const currency = field.attributes.currency || 'USD';
+        const decimalPoints = field.attributes.decimal_points || 2;
+        const scale = Math.pow(10, decimalPoints);
+
+        let initialValue = '';
+        if (v || v === 0) {
+          initialValue = v.toLocaleString(locale, {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: decimalPoints,
+            minimumFractionDigits: decimalPoints
+          });
+        }
+
         return input({
-          type: attrs?.type || "number",
-          inputmode: attrs?.inputmode,
-          pattern: attrs?.pattern,
-          autocomplete: attrs?.autocomplete,
+          type: "text",
           class: ["form-control", cls],
-          disabled: attrs.disabled,
-          readonly: attrs.readonly,
-          autofocus: attrs.autofocus,
           "data-fieldname": text_attr(field.name),
           name,
-          onChange: attrs.onChange,
           id,
-          step: "any",
           required: !!required,
-          value: text_attr(v),
-        });
+          value: text_attr(initialValue),
+          placeholder: (0).toLocaleString(locale, { style: 'currency', currency, maximumFractionDigits: decimalPoints })
+        }) + `
+          <script>
+            const input_${id} = document.getElementById('${id}');
+            input_${id}.addEventListener('input', (e) => {
+              let value = e.target.value.replace(/\\D/g, '');
+              value = (value / ${Math.pow(10, decimalPoints)}).toLocaleString('${locale}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
+              e.target.value = value;
+            });
+          </script>`;
       },
     },
   },
@@ -111,16 +126,33 @@ const money = {
       label: "Currency",
       sublabel: "Optional. ISO 4217. Example: USD or EUR",
     },
+    // New locale attribute
+    {
+      type: "String",
+      name: "locale",
+      label: "Locale",
+      sublabel: "Formatting locale, e.g. pt-BR for Brazilian Portuguese. Defaults to request locale or 'en'.",
+      default: "en",
+    },
   ],
   readFromDB: (v) => (typeof v === "string" ? +v : v),
   read: (v, attrs) => {
-    switch (typeof v) {
-      case "string":
-        if (v === "") return null;
-        return +v;
-      default:
-        return v;
+    if (v === null || v === undefined || v === "") return null;
+    
+    if (typeof v === "number") return v;
+    
+    if (typeof v === "string") {
+      // Remove currency symbols, spaces, and thousand separators
+      let cleaned = v
+        .replace(/[^\d,.-]/g, '')          // keep only digits, comma, dot, minus
+        .replace(/\.(?=.*,)/g, '')         // remove dots if comma is present (thousands)
+        .replace(/,/g, '.');               // convert decimal comma to dot
+      
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? undefined : num;
     }
+    
+    return undefined;
   },
 };
 
