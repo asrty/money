@@ -5,7 +5,7 @@ const { sqlBinOp } = require("@saltcorn/data/plugin-helper");
 
 const sql_name_function_allowed = !!sqlBinOp;
 
-const locale = (req) => {
+const localeFn = (req) => {
   //console.log(req && req.getLocale ? req.getLocale() : undefined);
   return req && req.getLocale ? req.getLocale() : undefined;
 };
@@ -16,14 +16,11 @@ const money = {
     ? ({ decimal_points }) =>
         `decimal(${16 + (decimal_points || 2)}, ${+(decimal_points || 2)})`
     : "decimal(18,2))", //legacy
-
   fieldviews: {
     show: {
-      configFields: (field) => {
-        return [
-          ...(!field?.attributes?.currency
-            ? [
-                {
+      configFields: (field) => [
+        ...(!field?.attributes?.currency ? [
+          {
                   type: "String",
                   name: "currency",
                   label: "Currency",
@@ -52,23 +49,102 @@ const money = {
             attributes: {
               options: ["symbol", "code", "narrrowSymbol", "name"],
             },
+          }, 
+          // New field: formula
+          {
+            type: "Code",
+            name: "formula",
+            label: "Formula (calculation)",
+            sublabel: "JS expression using other fields. Example: {valor1} * {valor2} or {total} * (1 - {desconto}/100). Leave empty to show own value.",
           },
-        ];
+        ],
+        isEdit: false,
+        run: (v, req, attrs = {}, field) => {
+          const v1 = typeof v === "string" ? +v : v;
+          const locale_ = attrs.locale || attrs.format_locale || localeFn(req) || "en";
+          const currency = attrs.currency || "BRL";
+          const decimalPoints = attrs.decimal_points ?? 2;
+
+          const displayValue = (num) =>
+            typeof num === "number" && !isNaN(num)
+              ? num.toLocaleString(locale_, {
+                  style: "currency",
+                  currency,
+                  currencyDisplay: attrs.currencyDisplay || "symbol",
+                  minimumFractionDigits: decimalPoints,
+                  maximumFractionDigits: decimalPoints,
+                })
+              : "";
+
+          // If no formula → normal display
+          if (!attrs.formula || attrs.formula.trim() === "") {
+            return displayValue(v1);
+          }
+
+          // Container with unique ID for this show field
+          const containerId = `money-calc-${field.name}-${Math.random().toString(36).slice(2, 10)}`;
+
+          return div(
+            { id: containerId, "data-formula": attrs.formula },
+            displayValue(v1) // initial value
+          ) + `
+            <script>
+              // Global calculator - runs once per page
+              if (!window.moneyFormulasInitialized) {
+                window.moneyFormulasInitialized = true;
+
+                const parseMoney = (str) => {
+                  if (!str) return 0;
+                  return parseFloat(
+                    str
+                      .replace(/[^\\d,.-]/g, '')
+                      .replace(/\\./g, '')
+                      .replace(/,/g, '.')
+                  ) || 0;
+                };
+
+                const updateCalculations = () => {
+                  document.querySelectorAll('[data-formula]').forEach(el => {
+                    const formula = el.dataset.formula.trim();
+                    if (!formula) return;
+
+                    let expr = formula;
+
+                    // Replace {field_name} with current values
+                    document.querySelectorAll('.money-input[data-fieldname]').forEach(input => {
+                      const fname = input.dataset.fieldname;
+                      const value = parseMoney(input.value);
+                      const regex = new RegExp(\`\\\\{\\\\s*\${fname}\\\\s*\\\\}\`, 'g');
+                      expr = expr.replace(regex, value);
+                    });
+
+                    try {
+                      const result = eval(expr); // WARNING: only use in trusted environment!
+                      el.textContent = result.toLocaleString('${locale_}', {
+                        style: 'currency',
+                        currency: '${currency}',
+                        minimumFractionDigits: ${decimalPoints},
+                        maximumFractionDigits: ${decimalPoints}
+                      });
+                    } catch (e) {
+                      el.textContent = "Erro no cálculo";
+                      console.error("Formula error:", e, expr);
+                    }
+                  });
+                };
+
+                // Listen to all money inputs
+                document.addEventListener('DOMContentLoaded', () => {
+                  document.querySelectorAll('.money-input').forEach(input => {
+                    input.addEventListener('input', updateCalculations);
+                    input.addEventListener('blur', updateCalculations);
+                  });
+                  updateCalculations(); // initial run
+                });
+              }
+            </script>`;
+        },
       },
-      isEdit: false,
-      run: (v, req, attrs = {}) => {
-        const v1 = typeof v === "string" ? +v : v;
-        if (typeof v1 === "number") {
-          const locale_ = attrs.locale || attrs.format_locale || locale(req) || "en"; // Support new attribute
-          return v1.toLocaleString(locale_, {
-            style: attrs.currency ? "currency" : "decimal",
-            currency: attrs.currency || undefined,
-            currencyDisplay: attrs.currencyDisplay || "symbol",
-            maximumFractionDigits: attrs.decimal_points,
-          });
-        } else return "";
-      },
-    },
     edit: {
       isEdit: true,
       run: (nm, v, attrs, cls, required, field) => {
@@ -91,7 +167,7 @@ const money = {
 
         return input({
           type: "text",
-          class: ["form-control", cls],
+          class: ["form-control", "money-input", cls],
           "data-fieldname": text_attr(field.name),
           name,
           id,
