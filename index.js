@@ -52,10 +52,23 @@ const money = {
           }, 
           // New field: formula
           {
-            type: "Code",
+            input_type: "code",
+            attributes: { mode: "application/javascript" },
+            class: "validate-statements",
             name: "formula",
             label: "Formula (calculation)",
-            sublabel: "JS expression using other fields. Example: {valor1} * {valor2} or {total} * (1 - {desconto}/100). Leave empty to show own value.",
+            sublabel: `JS expression using other fields. Example: strings or <code>{ {valor1} * {valor2} or {total} * (1 - {desconto}/100) }</code> Leave empty to show own value.`,
+            validator(s) {
+              try {
+                let AsyncFunction = Object.getPrototypeOf(
+                  async function () {}
+                ).constructor;
+                AsyncFunction(s);
+                return true;
+              } catch (e) {
+                return e.message;
+              }
+            },
           },
         ],
         isEdit: false,
