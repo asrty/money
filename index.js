@@ -164,6 +164,12 @@ const money = {
             });
             // Calculation script if formula is provided
             if ('${formula}' !== '') {
+            const inputResultado = document.getElementById('${id}');
+            function animarInput() {
+              inputResultado.classList.remove('animar');
+              void inputResultado.offsetWidth; // força o reflow
+              inputResultado.classList.add('animar');
+            }
               if (!window.moneyCalcInitialized) {
                 window.moneyCalcInitialized = true;
                 const parseValue = (str) => {
@@ -189,14 +195,6 @@ const money = {
                 updateCalc();
               }
             }
-            const inputResultado = document.getElementById('${id}');
-
-            function animarInput() {
-              inputResultado.classList.remove('animar');
-              void inputResultado.offsetWidth; // força o reflow
-              inputResultado.classList.add('animar');
-            }
-
           </script>`;
       },
     },
