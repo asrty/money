@@ -97,17 +97,30 @@ const money = {
             }
           },
         },
+        {
+          input_type: "code",
+          attributes: { mode: "text/css" },
+          class: "validate-statements",
+          name: "CSS code",
+          label: "CSS code",
+          sublabel: `CSS code personalized for input-{$id}. Example: <code>.input-{$id} {background-color: transparent;   /* tira o fundo */}</code> Leave blank for default CSS.`,
+          validator(s) {
+            // Optional: Basic CSS validation can be added if needed, but skipped for simplicity as CSS is forgiving
+            return true;
+          },
+        },
       ],
       isEdit: true,
       run: (nm, v, attrs, cls, required, field) => {
         const id = `input${text_attr(nm)}`;
         const name = text_attr(nm);
-        const locale_ = attrs.locale || locale(req) || 'en';
-        const currency = attrs.currency || 'USD';
-        const decimalPoints = attrs.decimal_points || 2;
+        const locale_ = field.attributes.locale || 'en';  // Fixed: Use field.attributes (type attrs), no req needed
+        const currency = field.attributes.currency || 'USD';  // Fixed: Consistent with field.attributes
+        const decimalPoints = field.attributes.decimal_points || 2;
         const scale = Math.pow(10, decimalPoints);
         const isReadonly = attrs.readonly || false;
         const formula = attrs.formula ? attrs.formula.trim() : '';
+        const customCSS = attrs["CSS code"] ? attrs["CSS code"].trim().replace(/\{\$id\}/g, id) : '';
 
         let initialValue = '';
         if (v || v === 0) {
@@ -120,10 +133,10 @@ const money = {
         }
         const placeholder = (0).toLocaleString(locale_, { style: 'currency', currency, maximumFractionDigits: decimalPoints });
 
-        const inputType = isReadonly ? "text" : "text"; // Always text for masking
+        const inputType = "text";  // Always text for masking
         const readonlyAttr = isReadonly ? 'readonly="readonly"' : '';
 
-        return input({
+        let html = input({
           type: inputType,
           class: ["form-control", cls],
           "data-fieldname": text_attr(field.name),
@@ -132,29 +145,15 @@ const money = {
           required: !!required,
           value: text_attr(initialValue),
           placeholder,
-          readonly: isReadonly ? true : undefined // For markup
-        }) + `
-        <style>
-        @keyframes pulse {
-          0% {
-            transform: scale(1);
-            color: #000;
-          }
-          50% {
-            transform: scale(1.1);
-            color: #198754; /* verde Bootstrap */
-          }
-          100% {
-            transform: scale(1);
-            color: #000;
-          }
+          readonly: isReadonly ? true : undefined  // For markup
+        });
+
+        // Inject custom CSS if provided
+        if (customCSS !== '') {
+          html += `<style>${customCSS}</style>`;
         }
 
-        .animar {
-          animation: pulse 0.3s ease;
-        }
-
-        </style>
+        html +=`
           <script>
             const input_${id} = document.getElementById('${id}');
             input_${id}.addEventListener('input', (e) => {
