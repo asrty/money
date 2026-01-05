@@ -391,9 +391,7 @@ const money = {
           required: !!required,
           value: text_attr(initialValue),
           placeholder,
-          readonly: isReadonly || undefined,
-          disabled: attrs.disabled || undefined,
-          autocomplete: "off",
+          readonly: isReadonly ? true : undefined  // For markup
         });
         /*
         // Adiciona estilos de animação se for campo calculado
