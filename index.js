@@ -138,7 +138,7 @@ const money = {
 
         let html = input({
           type: inputType,
-          class: ["form-control", cls],
+          class: ["form-control", cls, id],
           "data-fieldname": text_attr(field.name),
           name,
           id,
