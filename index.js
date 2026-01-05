@@ -103,7 +103,7 @@ const money = {
           class: "validate-statements",
           name: "csscode",
           label: "CSS code",
-          sublabel: `CSS code personalized for input-{$id}. Example: <code>.input-{$id} {background-color: transparent;   /* tira o fundo */}</code> Leave blank for default CSS.`,
+          sublabel: `CSS code personalized for {$id}. Example: <code>.{$id} {background-color: transparent;   /* tira o fundo */}</code> Leave blank for default CSS.`,
           validator(s) {
             // Optional: Basic CSS validation can be added if needed, but skipped for simplicity as CSS is forgiving
             return true;
