@@ -1,12 +1,12 @@
 {
   "name": "@saltcorn/money",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "Money datatype",
   "main": "index.js",
   "dependencies": {
     "@saltcorn/data": "^0.8.3"
   },
-  "author": "Tom Nielsen",
+  "author": "Tom Nielsen, Asrty",
   "license": "MIT",
   "devDependencies": {
     "jest": "^25.1.0",

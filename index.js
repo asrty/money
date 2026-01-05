@@ -5,7 +5,7 @@ const { sqlBinOp } = require("@saltcorn/data/plugin-helper");
 
 const sql_name_function_allowed = !!sqlBinOp;
 
-const localeFn = (req) => {
+const locale = (req) => {
   //console.log(req && req.getLocale ? req.getLocale() : undefined);
   return req && req.getLocale ? req.getLocale() : undefined;
 };
@@ -84,7 +84,7 @@ const money = {
           class: "validate-statements",
           name: "formula",
           label: "Formula (calculation)",
-          sublabel: `JS expression using other fields. Example: strings or <code>{ {valor1} * {valor2} or {total} * (1 - {desconto}/100) }</code> Leave empty to show own value.`,
+          sublabel: `JS expression using other fields. Example: strings: value1 * (1 - value2/100) or code: <code>{value1} * {value2} or </code> Leave empty to show own value.`,
           validator(s) {
             try {
               let AsyncFunction = Object.getPrototypeOf(
@@ -134,6 +134,27 @@ const money = {
           placeholder,
           readonly: isReadonly ? true : undefined // For markup
         }) + `
+        <style>
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+            color: #000;
+          }
+          50% {
+            transform: scale(1.1);
+            color: #198754; /* verde Bootstrap */
+          }
+          100% {
+            transform: scale(1);
+            color: #000;
+          }
+        }
+
+        .animar {
+          animation: pulse 0.3s ease;
+        }
+
+        </style>
           <script>
             const input_${id} = document.getElementById('${id}');
             input_${id}.addEventListener('input', (e) => {
@@ -159,15 +180,23 @@ const money = {
                 });
                   try {
                     const result = eval(expr);
-                    document.getElementById('${id}').value = result.toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints}, minimumFractionDigits: ${decimalPoints} });
+                    inputResultado.value = result.toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints}, minimumFractionDigits: ${decimalPoints} });
                   } catch (e) {
-                    document.getElementById('${id}').value = 'Erro no cálculo';
+                    inputResultado.value = 'Erro no cálculo';
                   }
                 };
                 document.querySelectorAll('[data-fieldname]').forEach(inp => inp.addEventListener('input', updateCalc));
                 updateCalc();
               }
             }
+            const inputResultado = document.getElementById('${id}');
+
+            function animarInput() {
+              inputResultado.classList.remove('animar');
+              void inputResultado.offsetWidth; // força o reflow
+              inputResultado.classList.add('animar');
+            }
+
           </script>`;
       },
     },
