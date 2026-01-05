@@ -185,8 +185,12 @@ const money = {
                 });
                 try {
                     const result = eval(expr);
-                    inputResultado.value = result.toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints}, minimumFractionDigits: ${decimalPoints} });
-                    animarInput();  // Trigger animation on update
+                    const formatted = result.toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints}, minimumFractionDigits: ${decimalPoints} });
+                    const oldValue = inputResultado.value;
+                    if (formatted !== oldValue) {  // Only update and animate if changed
+                      inputResultado.value = formatted;
+                      animarInput();
+                    }
                   } catch (e) {
                     inputResultado.value = 'Erro no cálculo';
                   }
