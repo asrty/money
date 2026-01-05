@@ -13,7 +13,7 @@ const getLocale = (req) => {
 
 /**
  * Configuração de estilos para animação de campos calculados
- */
+ 
 const ANIMATION_STYLES = `
   @keyframes money-pulse {
     0% { transform: scale(1); }
@@ -30,7 +30,7 @@ const ANIMATION_STYLES = `
   .money-calculated {
     transition: background-color 0.3s ease;
   }
-`;
+`;*/
 
 /**
  * Gera o script de formatação monetária em tempo real
@@ -393,11 +393,11 @@ const money = {
           disabled: attrs.disabled || undefined,
           autocomplete: "off",
         });
-        
+        /*
         // Adiciona estilos de animação se for campo calculado
         if (hasFormula) {
           html += style(ANIMATION_STYLES);
-        }
+        }*/
         
         // Adiciona CSS customizado se fornecido
         if (customCSS) {
