@@ -138,7 +138,7 @@ const money = {
             const input_${id} = document.getElementById('${id}');
             input_${id}.addEventListener('input', (e) => {
               let value = e.target.value.replace(/\\D/g, '');
-              value = (value / ${scale}).toLocaleString('${locale}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
+              value = (value / ${scale}).toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
               e.target.value = value;
             });
             // Calculation script if formula is provided
