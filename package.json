@@ -1,6 +1,6 @@
 {
   "name": "@saltcorn/money",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Money datatype",
   "main": "index.js",
   "dependencies": {
