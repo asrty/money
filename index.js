@@ -372,12 +372,14 @@ const money = {
         });
         
         // Classes CSS adicionais
-        const fieldClasses = [
+        /*const fieldClasses = [
           "form-control",
           cls,
           id,
           hasFormula ? "money-calculated" : ""
-        ].filter(Boolean).join(" ");
+        ].filter(Boolean).join(" ");*/
+
+        const fieldClasses = ["form-control", cls, id];
         
         // Gera o HTML do campo
         let html = input({
