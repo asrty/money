@@ -101,7 +101,7 @@ const money = {
           input_type: "code",
           attributes: { mode: "text/css" },
           class: "validate-statements",
-          name: "CSS code",
+          name: "CSS-code",
           label: "CSS code",
           sublabel: `CSS code personalized for input-{$id}. Example: <code>.input-{$id} {background-color: transparent;   /* tira o fundo */}</code> Leave blank for default CSS.`,
           validator(s) {
@@ -120,7 +120,7 @@ const money = {
         const scale = Math.pow(10, decimalPoints);
         const isReadonly = attrs.readonly || false;
         const formula = attrs.formula ? attrs.formula.trim() : '';
-        const customCSS = attrs["CSS code"] ? attrs["CSS code"].trim().replace(/\{\$id\}/g, id) : '';
+        const customCSS = attrs["CSS-code"] ? attrs["CSS-code"].trim().replace(/\{\$id\}/g, id) : '';
 
         let initialValue = '';
         if (v || v === 0) {
