@@ -16,11 +16,14 @@ const money = {
     ? ({ decimal_points }) =>
         `decimal(${16 + (decimal_points || 2)}, ${+(decimal_points || 2)})`
     : "decimal(18,2))", //legacy
+    
   fieldviews: {
     show: {
-      configFields: (field) => [
-        ...(!field?.attributes?.currency ? [
-          {
+      configFields: (field) => {
+        return [
+          ...(!field?.attributes?.currency
+            ? [
+                {
                   type: "String",
                   name: "currency",
                   label: "Currency",
@@ -47,154 +50,124 @@ const money = {
             label: "Currency display",
             required: true,
             attributes: {
-              options: ["symbol", "code", "narrrowSymbol", "name"],
-            },
-          }, 
-          // New field: formula
-          {
-            input_type: "code",
-            attributes: { mode: "application/javascript" },
-            class: "validate-statements",
-            name: "formula",
-            label: "Formula (calculation)",
-            sublabel: `JS expression using other fields. Example: strings or <code>{ {valor1} * {valor2} or {total} * (1 - {desconto}/100) }</code> Leave empty to show own value.`,
-            validator(s) {
-              try {
-                let AsyncFunction = Object.getPrototypeOf(
-                  async function () {}
-                ).constructor;
-                AsyncFunction(s);
-                return true;
-              } catch (e) {
-                return e.message;
-              }
+              options: ["symbol", "code", "narrowSymbol", "name"],
             },
           },
-        ],
-        isEdit: false,
-        run: (v, req, attrs = {}, field) => {
-          const v1 = typeof v === "string" ? +v : v;
-          const locale_ = attrs.locale || attrs.format_locale || localeFn(req) || "en";
-          const currency = attrs.currency || "BRL";
-          const decimalPoints = attrs.decimal_points ?? 2;
-
-          const displayValue = (num) =>
-            typeof num === "number" && !isNaN(num)
-              ? num.toLocaleString(locale_, {
-                  style: "currency",
-                  currency,
-                  currencyDisplay: attrs.currencyDisplay || "symbol",
-                  minimumFractionDigits: decimalPoints,
-                  maximumFractionDigits: decimalPoints,
-                })
-              : "";
-
-          // If no formula → normal display
-          if (!attrs.formula || attrs.formula.trim() === "") {
-            return displayValue(v1);
-          }
-
-          // Container with unique ID for this show field
-          const containerId = `money-calc-${field.name}-${Math.random().toString(36).slice(2, 10)}`;
-
-          return div(
-            { id: containerId, "data-formula": attrs.formula },
-            displayValue(v1) // initial value
-          ) + `
-            <script>
-              // Global calculator - runs once per page
-              if (!window.moneyFormulasInitialized) {
-                window.moneyFormulasInitialized = true;
-
-                const parseMoney = (str) => {
-                  if (!str) return 0;
-                  return parseFloat(
-                    str
-                      .replace(/[^\\d,.-]/g, '')
-                      .replace(/\\./g, '')
-                      .replace(/,/g, '.')
-                  ) || 0;
-                };
-
-                const updateCalculations = () => {
-                  document.querySelectorAll('[data-formula]').forEach(el => {
-                    const formula = el.dataset.formula.trim();
-                    if (!formula) return;
-
-                    let expr = formula;
-
-                    // Replace {field_name} with current values
-                    document.querySelectorAll('.money-input[data-fieldname]').forEach(input => {
-                      const fname = input.dataset.fieldname;
-                      const value = parseMoney(input.value);
-                      const regex = new RegExp(\`\\\\{\\\\s*\${fname}\\\\s*\\\\}\`, 'g');
-                      expr = expr.replace(regex, value);
-                    });
-
-                    try {
-                      const result = eval(expr); // WARNING: only use in trusted environment!
-                      el.textContent = result.toLocaleString('${locale_}', {
-                        style: 'currency',
-                        currency: '${currency}',
-                        minimumFractionDigits: ${decimalPoints},
-                        maximumFractionDigits: ${decimalPoints}
-                      });
-                    } catch (e) {
-                      el.textContent = "Erro no cálculo";
-                      console.error("Formula error:", e, expr);
-                    }
-                  });
-                };
-
-                // Listen to all money inputs
-                document.addEventListener('DOMContentLoaded', () => {
-                  document.querySelectorAll('.money-input').forEach(input => {
-                    input.addEventListener('input', updateCalculations);
-                    input.addEventListener('blur', updateCalculations);
-                  });
-                  updateCalculations(); // initial run
-                });
-              }
-            </script>`;
-        },
+        ];
       },
+      isEdit: false,
+      run: (v, req, attrs = {}) => {
+        const v1 = typeof v === "string" ? +v : v;
+        if (typeof v1 === "number") {
+          const locale_ = attrs.locale || attrs.format_locale || locale(req) || "en";
+          return v1.toLocaleString(locale_, {
+            style: attrs.currency ? "currency" : "decimal",
+            currency: attrs.currency || undefined,
+            currencyDisplay: attrs.currencyDisplay || "symbol",
+            maximumFractionDigits: attrs.decimal_points,
+          });
+        } else return "";
+      },
+    },
     edit: {
+      configFields: () => [
+        {
+          type: "Bool",
+          name: "readonly",
+          label: "Readonly",
+          sublabel: "Make the field display-only (visualizable), with automatic calculation if formula is provided.",
+          default: false,
+        },
+        {
+          input_type: "code",
+          attributes: { mode: "application/javascript" },
+          class: "validate-statements",
+          name: "formula",
+          label: "Formula (calculation)",
+          sublabel: `JS expression using other fields. Example: strings or <code>{ {valor1} * {valor2} or {total} * (1 - {desconto}/100) }</code> Leave empty to show own value.`,
+          validator(s) {
+            try {
+              let AsyncFunction = Object.getPrototypeOf(
+                async function () {}
+              ).constructor;
+              AsyncFunction(s);
+              return true;
+            } catch (e) {
+              return e.message;
+            }
+          },
+        },
+      ],
       isEdit: true,
       run: (nm, v, attrs, cls, required, field) => {
         const id = `input${text_attr(nm)}`;
         const name = text_attr(nm);
-        const locale = field.attributes.locale || locale(req) || 'en';
-        const currency = field.attributes.currency || 'USD';
-        const decimalPoints = field.attributes.decimal_points || 2;
+        const locale_ = attrs.locale || locale(req) || 'en';
+        const currency = attrs.currency || 'USD';
+        const decimalPoints = attrs.decimal_points || 2;
         const scale = Math.pow(10, decimalPoints);
+        const isReadonly = attrs.readonly || false;
+        const formula = attrs.formula ? attrs.formula.trim() : '';
 
         let initialValue = '';
         if (v || v === 0) {
-          initialValue = v.toLocaleString(locale, {
+          initialValue = v.toLocaleString(locale_, {
             style: 'currency',
             currency,
             maximumFractionDigits: decimalPoints,
             minimumFractionDigits: decimalPoints
           });
         }
+        const placeholder = (0).toLocaleString(locale_, { style: 'currency', currency, maximumFractionDigits: decimalPoints });
+
+        const inputType = isReadonly ? "text" : "text"; // Always text for masking
+        const readonlyAttr = isReadonly ? 'readonly="readonly"' : '';
 
         return input({
-          type: "text",
-          class: ["form-control", "money-input", cls],
+          type: inputType,
+          class: ["form-control", cls],
           "data-fieldname": text_attr(field.name),
           name,
           id,
           required: !!required,
           value: text_attr(initialValue),
-          placeholder: (0).toLocaleString(locale, { style: 'currency', currency, maximumFractionDigits: decimalPoints })
+          placeholder,
+          readonly: isReadonly ? true : undefined // For markup
         }) + `
           <script>
             const input_${id} = document.getElementById('${id}');
             input_${id}.addEventListener('input', (e) => {
               let value = e.target.value.replace(/\\D/g, '');
-              value = (value / ${Math.pow(10, decimalPoints)}).toLocaleString('${locale}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
+              value = (value / ${scale}).toLocaleString('${locale}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
               e.target.value = value;
             });
+            // Calculation script if formula is provided
+            if ('${formula}' !== '') {
+              if (!window.moneyCalcInitialized) {
+                window.moneyCalcInitialized = true;
+                const parseValue = (str) => {
+                  if (!str) return 0;
+                  let cleaned = str.replace(/[^\\d,.-]/g, '').replace(/\\.(?=.*,)/g, '').replace(/,/g, '.');
+                  return parseFloat(cleaned) || 0;
+                };
+                const updateCalc = () => {
+                  let expr = '${formula}';
+                  document.querySelectorAll('[data-fieldname]').forEach(inp => {
+                    const fname = inp.dataset.fieldname;
+                    const val = parseValue(inp.value);
+                    expr = expr.replace(new RegExp('\\\\{?' + fname + '\\\\}?', 'g'), val);
+                });
+                  try {
+                    const result = eval(expr);
+                    document.getElementById('${id}').value = result.toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints}, minimumFractionDigits: ${decimalPoints} });
+                  } catch (e) {
+                    document.getElementById('${id}').value = 'Erro no cálculo';
+                  }
+                };
+                document.querySelectorAll('[data-fieldname]').forEach(inp => inp.addEventListener('input', updateCalc));
+                updateCalc();
+              }
+            }
           </script>`;
       },
     },
@@ -214,6 +187,7 @@ const money = {
       name: "currency",
       label: "Currency",
       sublabel: "Optional. ISO 4217. Example: USD or EUR",
+      default: "USD",
     },
     // New locale attribute
     {
