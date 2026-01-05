@@ -196,6 +196,7 @@ const money = {
               }
             }
           </script>`;
+          return html;
       },
     },
   },
