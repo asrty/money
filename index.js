@@ -59,7 +59,6 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
           }
 
           const numValue = value / ${scale};
-          ${isRawNumeric} ? e.target.value = numValue.toFixed(${decimalPoints}).replace('.', ',') : 
           e.target.value = numValue.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
@@ -79,6 +78,46 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
   `;
 };
 
+/**
+ * Gera o script de formatação valor em tempo real
+ */
+const generateFormatterScript2 = (id, decimalPoints) => {
+  const scale = Math.pow(10, decimalPoints);
+  
+  return `
+    (function() {
+      const input = document.getElementById('${id}');
+      if (!input) return;
+      
+      // Flag para evitar loops infinitos durante a formatação
+      let isFormatting = false;
+      
+      input.addEventListener('input', (e) => {
+        if (isFormatting) return;
+        isFormatting = true;
+        
+        try {
+          let value = e.target.value.replace(/\\D/g, '');
+          
+          if (value === '') {
+            e.target.value = '';
+            return;
+          }
+
+          const numValue = value / ${scale};
+          e.target.value = numValue.toFixed(${decimalPoints}).replace('.', ',');
+        } finally {
+          isFormatting = false;
+        }
+      });
+      
+      // Formata o valor inicial se existir
+      if (input.value) {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    })();
+  `;
+};
 
 /**
  * Gera o script de cálculo automático para campos readonly com fórmula
@@ -158,7 +197,6 @@ const generateCalculationScript = (id, formula, locale, currency, decimalPoints)
           }
           
           // Formata o resultado
-          ${isRawNumeric} ? const formatted = result.toFixed(${decimalPoints}).replace('.', ',') : 
           const formatted = result.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
@@ -442,8 +480,9 @@ const money = {
         // Adiciona scripts de formatação e cálculo
         html += script(
           domReady(`
-            ${!isReadonly && !hasFormula ? generateFormatterScript(id, locale_, currency, decimalPoints) : ''}
-            ${hasFormula ? generateCalculationScript(id, formula, locale_, currency, decimalPoints) : ''}
+            ${!isReadonly && !hasFormula && !isRawNumeric ? generateFormatterScript(id, locale_, currency, decimalPoints) : ''}
+            ${isRawNumeric ? generateFormatterScript2(id, decimalPoints) : ''}
+            ${hasFormula && !isRawNumeric ? generateCalculationScript(id, formula, locale_, currency, decimalPoints) : ''}
           `)
         );
         
