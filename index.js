@@ -57,14 +57,18 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
             e.target.value = '';
             return;
           }
-          
+
           const numValue = value / ${scale};
+          ${isRawNumeric ? `
+          e.target.value = numValue.toFixed(${decimalPoints}).replace('.', ',');
+          ` : `
           e.target.value = numValue.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
             minimumFractionDigits: ${decimalPoints},
             maximumFractionDigits: ${decimalPoints}
           });
+          `}
         } finally {
           isFormatting = false;
         }
@@ -77,6 +81,7 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
     })();
   `;
 };
+
 
 /**
  * Gera o script de cálculo automático para campos readonly com fórmula
@@ -156,12 +161,16 @@ const generateCalculationScript = (id, formula, locale, currency, decimalPoints)
           }
           
           // Formata o resultado
+          ${isRawNumeric ? `
+          const formatted = result.toFixed(${decimalPoints}).replace('.', ',');
+          ` : `
           const formatted = result.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
             minimumFractionDigits: ${decimalPoints},
             maximumFractionDigits: ${decimalPoints}
           });
+          `}
           
           // Atualiza apenas se o valor mudou
           const oldValue = inputResultado.value;
@@ -266,28 +275,44 @@ const money = {
             label: "Locale override",
             sublabel: "Optional. Override field locale. Example: pt-BR, en-US",
           },
+          // New boolean option - this is what you asked for
+          {
+            type: "Bool",
+            name: "raw_numeric",
+            label: "Raw numeric display",
+            sublabel: "When checked, shows the pure number without currency symbol, separators or locale formatting (e.g. 1234.56 instead of R$ 1.234,56)",
+            default: false,
+          },
         ];
       },
       isEdit: false,
       run: (v, req, attrs = {}) => {
         const v1 = typeof v === "string" ? +v : v;
         
-        if (typeof v1 !== "number" || isNaN(v1)) {
-          return "";
+
+        // If raw_numeric is checked → return plain number
+        if (attrs.raw_numeric === true) {
+          if (v1 == null) return "";
+          // Most common choices - pick one:
+          return v1.toFixed(attrs.decimal_points || 2).replace('.', ',');                    // exact stored value (recommended)
+          // OR: return v1.toFixed(attrs.decimal_points || 2);  // always 2 decimals
+          // OR: return v1.toFixed(0);  // integer only
         }
-        
-        const locale_ = attrs.locale || attrs.format_locale || getLocale(req) || "en";
-        const decimalPoints = attrs.decimal_points || 2;
-        
-        return v1.toLocaleString(locale_, {
+
+        // Otherwise → original formatted version
+        if (typeof v1 === "number") {
+          const locale_ = attrs.locale || attrs.format_locale || getLocale(req) || "en";
+          const decimalPoints = attrs.decimal_points || 2;
+          return v1.toLocaleString(locale_, {
           style: attrs.currency ? "currency" : "decimal",
           currency: attrs.currency || undefined,
           currencyDisplay: attrs.currencyDisplay || "symbol",
           minimumFractionDigits: decimalPoints,
           maximumFractionDigits: decimalPoints,
         });
-      },
-    },
+    } else return "";
+  },
+},
 
     /**
      * Fieldview para edição com formatação automática
@@ -299,6 +324,14 @@ const money = {
           name: "readonly",
           label: "Readonly (Calculated field)",
           sublabel: "Make field display-only. Use with formula for automatic calculation.",
+          default: false,
+        },
+        // New boolean - same as in show
+        {
+          type: "Bool",
+          name: "raw_numeric",
+          label: "Raw numeric initial display",
+          sublabel: "When checked, shows the pure number without currency symbol, separators or locale formatting in the initial value (e.g. 1234.56 instead of R$ 1.234,56). Masking still works during typing.",
           default: false,
         },
         {
@@ -345,6 +378,7 @@ const money = {
         
         // Obtém configurações do fieldview (attrs)
         const isReadonly = attrs.readonly || false;
+        const isRawNumeric = attrs.raw_numeric || false;
         const formula = attrs.formula ? attrs.formula.trim() : '';
         const customCSS = sanitizeCustomCSS(attrs.csscode, id);
         const hasFormula = formula !== '';
@@ -354,6 +388,12 @@ const money = {
         if (v !== null && v !== undefined && v !== '') {
           const numValue = typeof v === "string" ? parseFloat(v) : v;
           if (!isNaN(numValue)) {
+            if (isRawNumeric) {
+            // Raw mode: plain number, with fixed decimals if desired
+            initialValue = numValue.toFixed(attrs.decimal_points || 2).replace('.', ',');
+            // Alternative: initialValue = String(numValue); // exact stored value
+          } else {
+            // Formatted mode
             initialValue = numValue.toLocaleString(locale_, {
               style: 'currency',
               currency,
@@ -362,9 +402,10 @@ const money = {
             });
           }
         }
+      }
         
         // Cria o placeholder formatado
-        const placeholder = (0).toLocaleString(locale_, {
+        const placeholder = isRawNumeric ? '0,00' : (0).toLocaleString(locale_, {
           style: 'currency',
           currency,
           minimumFractionDigits: decimalPoints,
