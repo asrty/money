@@ -59,16 +59,13 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
           }
 
           const numValue = value / ${scale};
-          ${isRawNumeric ? `
-          e.target.value = numValue.toFixed(${decimalPoints}).replace('.', ',');
-          ` : `
+          ${isRawNumeric} ? e.target.value = numValue.toFixed(${decimalPoints}).replace('.', ',') : 
           e.target.value = numValue.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
             minimumFractionDigits: ${decimalPoints},
             maximumFractionDigits: ${decimalPoints}
           });
-          `}
         } finally {
           isFormatting = false;
         }
@@ -161,16 +158,13 @@ const generateCalculationScript = (id, formula, locale, currency, decimalPoints)
           }
           
           // Formata o resultado
-          ${isRawNumeric ? `
-          const formatted = result.toFixed(${decimalPoints}).replace('.', ',');
-          ` : `
+          ${isRawNumeric} ? const formatted = result.toFixed(${decimalPoints}).replace('.', ',') : 
           const formatted = result.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
             minimumFractionDigits: ${decimalPoints},
             maximumFractionDigits: ${decimalPoints}
           });
-          `}
           
           // Atualiza apenas se o valor mudou
           const oldValue = inputResultado.value;
