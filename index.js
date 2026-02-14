@@ -120,119 +120,73 @@ const generateFormatterScript2 = (id, decimalPoints) => {
 };
 
 /**
- * Gera o script de cálculo automático para campos readonly com fórmula
+ * Gera o script de cálculo automático para campos com fórmula
  */
 const generateCalculationScript = (id, formula, locale, currency, decimalPoints) => {
   return `
     (function() {
-    const input_${id} = document.getElementById('${id}');
-      input_${id}.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\\D/g, '');
-        value = (value / ${scale}).toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
-        e.target.value = value;
-      });
-      if (!window.moneyCalculators) {
-        window.moneyCalculators = new Set();
-      }
-      
-      // Evita inicialização duplicada
+      if (!window.moneyCalculators) window.moneyCalculators = new Set();
       if (window.moneyCalculators.has('${id}')) return;
       window.moneyCalculators.add('${id}');
-      
+
       const inputResultado = document.getElementById('${id}');
       if (!inputResultado) return;
-      
-      /**
-       * Extrai o valor numérico de um campo formatado
-       * @param {string} str - String formatada com moeda
-       * @returns {number} - Valor numérico extraído
-       */
+
       const parseMoneyValue = (str) => {
         if (!str || str === '') return 0;
-        
-        // Remove tudo exceto dígitos, vírgula, ponto e sinal negativo
         let cleaned = str
           .replace(/[^\\d,.-]/g, '')
-          .replace(/\\.(?=.*,)/g, '')  // Remove pontos se houver vírgula (milhares)
-          .replace(/,/g, '.');          // Converte vírgula decimal para ponto
-        
-        const result = parseFloat(cleaned);
-        return isNaN(result) ? 0 : result;
+          .replace(/\\.(?=.*,)/g, '')
+          .replace(/,/g, '.');
+        return parseFloat(cleaned) || 0;
       };
-      
-      /**
-       * Anima o campo quando o valor é atualizado
-       */
+
       const animateField = () => {
         inputResultado.classList.remove('animar');
-        void inputResultado.offsetWidth; // Força reflow para reiniciar animação
+        void inputResultado.offsetWidth;
         inputResultado.classList.add('animar');
-        
-        // Remove a classe após a animação
-        setTimeout(() => {
-          inputResultado.classList.remove('animar');
-        }, 300);
+        setTimeout(() => inputResultado.classList.remove('animar'), 300);
       };
-      
-      /**
-       * Calcula e atualiza o valor do campo baseado na fórmula
-       */
+
       const updateCalc = () => {
         try {
           let expr = \`${formula}\`;
           
-          // Substitui referências de campos pelos seus valores
           document.querySelectorAll('[data-fieldname]').forEach(inp => {
-              const fname = inp.dataset.fieldname;
-              const val = parseValue(inp.value);
-            
-          // Substitui tanto {fieldname} quanto fieldname
-          expr = expr.replace(new RegExp('\\\\{?' + fname + '\\\\}?', 'g'), val);
+            const fname = inp.dataset.fieldname;
+            const val = parseMoneyValue(inp.value);
+            expr = expr.replace(new RegExp('\\\\{?' + fname + '\\\\}?', 'g'), val);
           });
-          
-          // Calcula o resultado
-          const result = eval(expression);
-          
-          // Verifica se é um número válido
-          if (isNaN(result) || !isFinite(result)) {
-            console.warn('Cálculo resultou em valor inválido:', result);
-            return;
-          }
-          
-          // Formata o resultado
+
+          const result = eval(expr);
+          if (isNaN(result) || !isFinite(result)) return;
+
           const formatted = result.toLocaleString('${locale}', {
             style: 'currency',
             currency: '${currency}',
             minimumFractionDigits: ${decimalPoints},
             maximumFractionDigits: ${decimalPoints}
           });
-          
-          // Atualiza apenas se o valor mudou
-          const oldValue = inputResultado.value;
-          if (formatted !== oldValue) {
+
+          if (formatted !== inputResultado.value) {
             inputResultado.value = formatted;
             animateField();
           }
         } catch (error) {
-          console.error('Erro ao calcular fórmula:', error);
+          console.error('Erro no cálculo:', error);
           inputResultado.value = 'Erro no cálculo';
         }
       };
-      
-      // Adiciona listeners em todos os campos que podem afetar o cálculo
-      const allInputs = document.querySelectorAll('[data-fieldname]');
-      allInputs.forEach(inp => {
-        // Remove listeners antigos para evitar duplicação
-        inp.removeEventListener('input', updateCalculation);
-        inp.removeEventListener('change', updateCalculation);
-        
-        // Adiciona novos listeners
-        inp.addEventListener('input', updateCalculation);
-        inp.addEventListener('change', updateCalculation);
+
+      // Listeners em todos os campos
+      document.querySelectorAll('[data-fieldname]').forEach(inp => {
+        inp.removeEventListener('input', updateCalc);
+        inp.removeEventListener('change', updateCalc);
+        inp.addEventListener('input', updateCalc);
+        inp.addEventListener('change', updateCalc);
       });
-      
-      // Executa o cálculo inicial
-      setTimeout(updateCalculation, 100);
+
+      setTimeout(updateCalc, 100);
     })();
   `;
 };
@@ -424,28 +378,26 @@ const money = {
           const numValue = typeof v === "string" ? parseFloat(v) : v;
           if (!isNaN(numValue)) {
             if (isRawNumeric) {
-            // Raw mode: plain number, with fixed decimals if desired
-            initialValue = numValue.toFixed(attrs.decimal_points || 2).replace('.', ',');
-            // Alternative: initialValue = String(numValue); // exact stored value
-          } else {
-            // Formatted mode
-            initialValue = numValue.toLocaleString(locale_, {
+              initialValue = numValue.toFixed(decimalPoints).replace('.', ',');
+            } else {
+              initialValue = numValue.toLocaleString(locale_, {
+                style: 'currency',
+                currency,
+                minimumFractionDigits: decimalPoints,
+                maximumFractionDigits: decimalPoints,
+              });
+            }
+          }
+        }
+        
+        const placeholder = isRawNumeric 
+          ? (0).toFixed(decimalPoints).replace('.', ',') 
+          : (0).toLocaleString(locale_, {
               style: 'currency',
               currency,
               minimumFractionDigits: decimalPoints,
               maximumFractionDigits: decimalPoints,
             });
-          }
-        }
-      }
-        
-        // Cria o placeholder formatado
-        const placeholder = isRawNumeric ? '0,00' : (0).toLocaleString(locale_, {
-          style: 'currency',
-          currency,
-          minimumFractionDigits: decimalPoints,
-          maximumFractionDigits: decimalPoints,
-        });
         
         // Classes CSS adicionais
         /*const fieldClasses = [
