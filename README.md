@@ -4,7 +4,7 @@ The enhanced Money module extends the original Saltcorn money plugin to provide 
 
 ### Key Features
 - **Core Money Type**: Stores values as decimals with configurable precision and optional ISO 4217 currency.
-- **Formatting and Masking**: Automatic currency input masking in edit views (e.g., "R$ 1.234,56") with locale-aware display.
+- **Formatting and Masking**: Automatic currency input masking in edit views (e.g., "$ 1.234,56") with locale-aware display.
 - **Locale Support**: Customizable formatting locales (e.g., 'pt-BR') for international use.
 - **Real-Time Calculations**: Formulas for dynamic computations (e.g., {field1} * {field2}) that update on input changes.
 - **Readonly Mode**: Checkbox to make fields display-only with auto-updates.
@@ -32,6 +32,22 @@ The original module (version 0.1.4) is lightweight, with minimal files (.gitigno
 | **Read Functions** | readFromDB: String to number; read: Handles empty strings to null, +v conversion. | Improved read to parse formatted currency strings (remove symbols/separators, handle commas/dots). |
 | **Other** | Legacy SQL fallback; no advanced features. | Real-time calculations (eval-based, with error handling), animations on updates, global script initialization to avoid duplicates. |
 
+#### Main Improvements Compared to the Original Module
+
+| Feature                               | Original Module                  | Enhanced Version                                      | Benefit |
+|---------------------------------------|----------------------------------|-------------------------------------------------------|---------|
+| **Form input**                        | `<input type="number">`          | Automatic currency mask (R$ 1,234.56)                 | Much better UX |
+| **Locale support**                    | Only request locale              | Per-field `locale` attribute (pt-BR, en-US, etc.)     | Full support for multiple currencies |
+| **Raw initial value**                 | Always formatted                 | `Raw numeric initial display` checkbox                | Show clean number when desired |
+| **Real-time calculation**             | Not available                    | `Formula` field + animation                           | Totals, discounts, taxes update while typing |
+| **Readonly field**                    | Not available                    | `Readonly` checkbox                                   | Visual calculated fields |
+| **Per-field custom CSS**              | Not available                    | `Custom CSS` field with `{$id}` placeholder           | Fine styling (transparent, no border, etc.) |
+| **Update animation**                  | Not available                    | Subtle pulse animation when value changes             | Clear visual feedback |
+| **Input parsing**                     | Basic                            | Removes symbol, separators and converts comma         | Correctly saves to database |
+| **Raw mode during typing**            | Not available                    | `generateFormatterScript2` (plain number mode)        | Option for completely clean experience |
+
+---
+
 Enhancements were developed iteratively to address limitations like plain number inputs (no masking), lack of locale config, no parsing for formatted submissions, and absence of dynamic calculations/animations.
 
 #### Installation and Setup
@@ -43,27 +59,71 @@ Enhancements were developed iteratively to address limitations like plain number
 #### Features in Detail
 - **Automatic Input Formatting**: Client JS listener strips non-digits, scales by decimal points (e.g., /100 for 2 decimals), and applies toLocaleString for currency (e.g., 'pt-BR', BRL). Supports initial values and placeholders.
 - **Locale Configuration**: New attribute for per-field locales, defaulting to "en"; overrides request locale for consistent formatting.
-- **Data Parsing**: Enhanced `read` function cleans formatted strings (e.g., "R$ 1.234,56" → 1234.56), handling commas/dots/symbols for reliable DB saves.
+- **Data Parsing**: Enhanced `read` function cleans formatted strings (e.g., "$ 1.234,56" → 1234.56), handling commas/dots/symbols for reliable DB saves.
 - **Real-Time Calculations**: In edit config, "Formula" (code input) allows JS expressions (e.g., 'teste1 + teste2 * 0.1'). Global script parses/replaces field names, evaluates with eval, updates value, and triggers animation. Empty formula disables.
 - **Readonly Mode**: Bool checkbox renders input as readonly; combines with formulas for display-only calculated fields.
 - **Custom CSS**: Code input for per-field styles; placeholders like {$id} replaced with ID (e.g., .inputteste3). Injected via <style> if non-empty; defaults preserved otherwise.
 - **Animations**: On updates, animarInput() removes/adds .animar class with reflow; requires @keyframes pulse (scale/color change) defined in app CSS.
 
-#### Usage Examples
-1. **Basic Money Field**: Create table field "price" as Money; set decimal_points=2, currency="BRL", locale="pt-BR". In edit form, input masks as "R$ 0,00".
-2. **Calculated Readonly Field**: In edit config, check "Readonly", set formula "{quantity} * {unit_price}". Field updates live as other inputs change.
-3. **Custom Styling**: Set CSS code ".{$id} { font-size: 2rem; color: green; }". Applies to specific input, e.g., larger green text.
-4. **Error Handling**: Invalid formulas show "Erro no cálculo"; parsing handles negatives/decimals.
+#### How to Use
 
-#### Known Issues and Limitations
-- **Eval Security**: Formula uses eval for flexibility; safe for admins but avoid in untrusted environments (consider math.js for production).
-- **Client-Side Only Calculations**: Visual previews; pair with Saltcorn calculated fields for DB storage.
-- **Locale Support**: Requires full-ICU in Node.js for non-English locales; small-ICU may error.
-- **Animation Dependency**: .animar and @keyframes pulse must be in app CSS; not bundled.
-- **Multiple Fields**: Global script initializes once; works for forms with <50 fields, but test large forms.
+#### 1. Type Attributes (configured when creating the field)
+
+- **Decimal points** → required, immutable
+- **Currency** → ISO 4217 code (BRL, USD, EUR…)
+- **Locale** → `pt-BR`, `en-US`, `es-ES`, etc.
+
+#### 2. Edit Fieldview Options (most important)
+
+When creating/editing the field, choose the **edit** fieldview and configure:
+
+- **Raw numeric initial display**  
+  → checked = initial value shown as plain number (1234.56)  
+  → unchecked = shown formatted (R$ 1,234.56)
+
+- **Readonly (Calculated field)**  
+  → check to make the field read-only (ideal for totals)
+
+- **Calculation formula**  
+  → JavaScript expression using other field names  
+  Examples:
+  - `valor_total - desconto`
+  - `{preco} * {quantidade} * (1 - {desconto_percentual}/100)`
+  - `Math.max(0, {total} * 0.95)`
+
+- **Custom CSS**  
+  → field-specific CSS  
+  Use `{$id}` placeholder:  
+  ```css
+  .{$id} {
+    background-color: transparent;
+    border: none;
+    font-size: 2rem;
+    font-weight: bold;
+  }
 
 #### Contributing
 Fork the repo, apply changes to index.js, test locally in Saltcorn, submit PR. Report issues for bugs in masking, parsing, or calculations.
 
 #### License
-MIT (as original).
+MIT License
+
+Copyright (c) 2024 Saltcorn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
