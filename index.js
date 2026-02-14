@@ -125,6 +125,12 @@ const generateFormatterScript2 = (id, decimalPoints) => {
 const generateCalculationScript = (id, formula, locale, currency, decimalPoints) => {
   return `
     (function() {
+    const input_${id} = document.getElementById('${id}');
+      input_${id}.addEventListener('input', (e) => {
+        let value = e.target.value.replace(/\\D/g, '');
+        value = (value / ${scale}).toLocaleString('${locale_}', { style: 'currency', currency: '${currency}', maximumFractionDigits: ${decimalPoints} });
+        e.target.value = value;
+      });
       if (!window.moneyCalculators) {
         window.moneyCalculators = new Set();
       }
@@ -171,20 +177,17 @@ const generateCalculationScript = (id, formula, locale, currency, decimalPoints)
       /**
        * Calcula e atualiza o valor do campo baseado na fórmula
        */
-      const updateCalculation = () => {
+      const updateCalc = () => {
         try {
-          let expression = \`${formula}\`;
+          let expr = \`${formula}\`;
           
           // Substitui referências de campos pelos seus valores
           document.querySelectorAll('[data-fieldname]').forEach(inp => {
-            const fieldName = inp.dataset.fieldname;
-            const value = parseMoneyValue(inp.value);
+              const fname = inp.dataset.fieldname;
+              const val = parseValue(inp.value);
             
-            // Substitui tanto {fieldname} quanto fieldname
-            expression = expression.replace(
-              new RegExp('\\\\{?' + fieldName + '\\\\}?', 'g'),
-              value
-            );
+          // Substitui tanto {fieldname} quanto fieldname
+          expr = expr.replace(new RegExp('\\\\{?' + fname + '\\\\}?', 'g'), val);
           });
           
           // Calcula o resultado
@@ -326,7 +329,7 @@ const money = {
         if (attrs.raw_numeric === true) {
           if (v1 == null) return "";
           // Most common choices - pick one:
-          return v1.toFixed(attrs.decimal_points || 2).replace('.', ',');                    // exact stored value (recommended)
+          return v1.toFixed(field.attributes?.decimal_points || 2).replace('.', ',');                    // exact stored value (recommended)
           // OR: return v1.toFixed(attrs.decimal_points || 2);  // always 2 decimals
           // OR: return v1.toFixed(0);  // integer only
         }
@@ -334,7 +337,7 @@ const money = {
         // Otherwise → original formatted version
         if (typeof v1 === "number") {
           const locale_ = attrs.locale || attrs.format_locale || getLocale(req) || "en";
-          const decimalPoints = attrs.decimal_points || 2;
+          const decimalPoints = field.attributes?.decimal_points || 2;
           return v1.toLocaleString(locale_, {
           style: attrs.currency ? "currency" : "decimal",
           currency: attrs.currency || undefined,
