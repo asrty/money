@@ -5,14 +5,14 @@ const { sqlBinOp } = require("@saltcorn/data/plugin-helper");
 const sql_name_function_allowed = !!sqlBinOp;
 
 /**
- * Obtém o locale da requisição ou usa o padrão
+ * Get the locale from the request or use the default.
  */
 const getLocale = (req) => {
   return req && req.getLocale ? req.getLocale() : undefined;
 };
 
 /**
- * Configuração de estilos para animação de campos calculados
+ * Setting styles for animating calculated fields.
  
 const ANIMATION_STYLES = `
   @keyframes money-pulse {
@@ -33,7 +33,7 @@ const ANIMATION_STYLES = `
 `;*/
 
 /**
- * Gera o script de formatação monetária em tempo real
+ * Generates the monetary formatting script in real time.
  */
 const generateFormatterScript = (id, locale, currency, decimalPoints) => {
   const scale = Math.pow(10, decimalPoints);
@@ -79,7 +79,7 @@ const generateFormatterScript = (id, locale, currency, decimalPoints) => {
 };
 
 /**
- * Gera o script de formatação valor em tempo real
+ * Generates the value formatting script in real time.
  */
 const generateFormatterScript2 = (id, decimalPoints) => {
   const scale = Math.pow(10, decimalPoints);
@@ -120,7 +120,7 @@ const generateFormatterScript2 = (id, decimalPoints) => {
 };
 
 /**
- * Gera o script de cálculo automático para campos com fórmula
+ * Generates the automatic calculation script for fields with formulas.
  */
 const generateCalculationScript = (id, formula, locale, currency, decimalPoints) => {
   return `
@@ -192,15 +192,15 @@ const generateCalculationScript = (id, formula, locale, currency, decimalPoints)
 };
 
 /**
- * Sanitiza e valida o CSS customizado
+ * Sanitizes and validates custom CSS.
  */
 const sanitizeCustomCSS = (css, id) => {
   if (!css || css.trim() === '') return '';
   
-  // Substitui {$id} pelo ID real do campo
+  // Replace {$id} with the actual ID of the field.
   let sanitized = css.replace(/\{\$id\}/g, id);
   
-  // Adiciona escopo para evitar conflitos globais se não tiver
+  // It adds scope to avoid global conflicts if it doesn't have one.
   if (!sanitized.includes(`.${id}`) && !sanitized.includes(`#${id}`)) {
     sanitized = `.${id} { ${sanitized} }`;
   }
@@ -209,7 +209,7 @@ const sanitizeCustomCSS = (css, id) => {
 };
 
 /**
- * Definição do tipo Money
+ * Definition of the Money type
  */
 const money = {
   name: "Money",
@@ -221,7 +221,7 @@ const money = {
 
   fieldviews: {
     /**
-     * Fieldview para exibição (somente leitura)
+     * Fieldview for display (read-only)
      */
     show: {
       configFields: (field) => {
@@ -304,7 +304,7 @@ const money = {
 },
 
     /**
-     * Fieldview para edição com formatação automática
+     * Fieldview for editing with automatic formatting
      */
     edit: {
       configFields: () => [
@@ -330,15 +330,15 @@ const money = {
           name: "formula",
           label: "Calculation formula",
           sublabel: `JavaScript expression using other field names. Examples:
-            • Simple: valor1 * valor2
-            • With braces: {valor_total} - {desconto}
-            • Complex: {preco} * {quantidade} * (1 - {desconto_percentual}/100)
+            • Simple: value1 * value2
+            • With braces: {value_total} - {discount}
+            • Complex: {price} * {amount} * (1 - {discount_percent}/100)
             Leave empty to show field's own value.`,
           validator(s) {
             if (!s || s.trim() === '') return true;
             
             try {
-              // Valida que é JavaScript válido
+              // Validate that it is JavaScript.
               new Function(s);
               return true;
             } catch (e) {
@@ -360,19 +360,19 @@ const money = {
         const id = `input${text_attr(nm)}`;
         const name = text_attr(nm);
         
-        // Obtém configurações do campo (atributos do tipo)
+        // Retrieves field settings (type attributes)
         const locale_ = field.attributes?.locale || "en";
         const currency = field.attributes?.currency || "USD";
         const decimalPoints = field.attributes?.decimal_points || 2;
         
-        // Obtém configurações do fieldview (attrs)
+        // Get fieldview settings (attrs)
         const isReadonly = attrs.readonly || false;
         const isRawNumeric = attrs.raw_numeric || false;
         const formula = attrs.formula ? attrs.formula.trim() : '';
         const customCSS = sanitizeCustomCSS(attrs.csscode, id);
         const hasFormula = formula !== '';
         
-        // Formata o valor inicial
+        // Format the initial value.
         let initialValue = '';
         if (v !== null && v !== undefined && v !== '') {
           const numValue = typeof v === "string" ? parseFloat(v) : v;
@@ -399,17 +399,17 @@ const money = {
               maximumFractionDigits: decimalPoints,
             });
         
-        // Classes CSS adicionais
-        /*const fieldClasses = [
+        // Additional CSS classes
+        const fieldClasses = [
           "form-control",
           cls,
           id,
           hasFormula ? "money-calculated" : ""
-        ].filter(Boolean).join(" ");*/
+        ].filter(Boolean).join(" ");
 
-        const fieldClasses = ["form-control", cls, id];
+        /*const fieldClasses = ["form-control", cls, id];*/
         
-        // Gera o HTML do campo
+        // Generates the HTML for the field.
         let html = input({
           type: "text",
           class: fieldClasses,
@@ -422,17 +422,17 @@ const money = {
           readonly: isReadonly ? true : undefined  // For markup
         });
         /*
-        // Adiciona estilos de animação se for campo calculado
+        // Add animation styles if it's a calculated field.
         if (hasFormula) {
           html += style(ANIMATION_STYLES);
         }*/
         
-        // Adiciona CSS customizado se fornecido
+        // Adds custom CSS if provided.
         if (customCSS) {
           html += style(customCSS);
         }
         
-        // Adiciona scripts de formatação e cálculo
+        // Adds formatting and calculation scripts.
         html += script(
           domReady(`
             ${!isReadonly && !hasFormula && !isRawNumeric ? generateFormatterScript(id, locale_, currency, decimalPoints) : ''}
@@ -447,7 +447,7 @@ const money = {
   },
 
   /**
-   * Atributos do tipo (configurados ao criar o campo)
+   * Type attributes (configured when creating the field)
    */
   attributes: [
     {
@@ -478,7 +478,7 @@ const money = {
   ],
 
   /**
-   * Converte valor do banco de dados para uso no sistema
+   * Converts database value for use in the system.
    */
   readFromDB: (v) => {
     if (v === null || v === undefined) return null;
@@ -486,25 +486,25 @@ const money = {
   },
 
   /**
-   * Processa valor de formulários antes de salvar no banco
+   * Process form values ​​before saving to the database.
    */
   read: (v, attrs) => {
-    // Valores nulos/undefined/vazios
+    // Null/undefined/empty values
     if (v === null || v === undefined || v === "") {
       return null;
     }
     
-    // Já é número
+    // Is it a number yet?
     if (typeof v === "number") {
       return isNaN(v) ? null : v;
     }
     
-    // String formatada - remove formatação
+    // Formatted string - remove formatting
     if (typeof v === "string") {
       const cleaned = v
-        .replace(/[^\d,.-]/g, '')          // Remove tudo exceto dígitos, vírgula, ponto e sinal
-        .replace(/\.(?=.*,)/g, '')         // Remove pontos se houver vírgula (separador de milhares)
-        .replace(/,/g, '.');               // Converte vírgula decimal para ponto
+        .replace(/[^\d,.-]/g, '')          // Remove everything except digits, commas, dot, and symbols.
+        .replace(/\.(?=.*,)/g, '')         // Remove dots if there is a comma (thousands separator).
+        .replace(/,/g, '.');               // Converts decimal comma to dot
       
       const num = parseFloat(cleaned);
       return isNaN(num) ? null : num;
